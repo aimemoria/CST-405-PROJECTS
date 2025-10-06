@@ -44,8 +44,10 @@ int syntax_errors = 0;
 
 %}
 
-/* Forward declaration for ASTNode (defined in ast.h) */
-typedef struct ASTNode ASTNode;
+%code requires {
+    /* Forward declaration for ASTNode (defined in ast.h) */
+    typedef struct ASTNode ASTNode;
+}
 
 /* Union for semantic values - stores different types of data for tokens/non-terminals */
 %union {
