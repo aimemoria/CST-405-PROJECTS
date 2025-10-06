@@ -14,8 +14,8 @@ TARGET = compiler
 # Source files
 LEX_SRC = scanner_new.l
 YACC_SRC = parser.y
-C_SOURCES = ast.c symtable.c semantic.c ircode.c codegen.c
-OBJECTS = parser.tab.o lex.yy.o ast.o symtable.o semantic.o ircode.o codegen.o
+C_SOURCES = compiler.c ast.c symtable.c semantic.c ircode.c codegen.c
+OBJECTS = compiler.o parser.tab.o lex.yy.o ast.o symtable.o semantic.o ircode.o codegen.o
 
 # Generated files
 LEX_OUTPUT = lex.yy.c
@@ -93,6 +93,11 @@ ircode.o: ircode.c ircode.h ast.h symtable.h
 codegen.o: codegen.c codegen.h ircode.h symtable.h
 	@echo "Compiling code generator..."
 	$(CC) $(CFLAGS) -c codegen.c
+
+# Compile main compiler driver
+compiler.o: compiler.c ast.h symtable.h semantic.h ircode.h codegen.h
+	@echo "Compiling main compiler driver..."
+	$(CC) $(CFLAGS) -c compiler.c
 
 # ============================================================
 # TEST TARGETS
