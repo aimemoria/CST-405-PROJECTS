@@ -48,6 +48,8 @@ WS          [ \t]
 "{"             { update_location(); yylval.str = strdup(yytext); return LBRACE; }
 "}"             { update_location(); yylval.str = strdup(yytext); return RBRACE; }
 
+"//".*          { col_num += yyleng; char_count += yyleng; }
+
 {WS}+           { col_num += yyleng; char_count += yyleng; }
 \n              { line_num++; col_num = 1; char_count++; }
 
