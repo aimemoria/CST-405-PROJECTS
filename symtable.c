@@ -1,0 +1,175 @@
+/*
+ * SYMTABLE.C - Symbol Table Implementation
+ * CST-405 Compiler Project
+ *
+ * This file implements a hash table-based symbol table for tracking
+ * variables during compilation. Provides O(1) average-case lookup.
+ */
+
+#include "symtable.h"
+
+/* Hash function - Converts string to table index using djb2 algorithm */
+unsigned int hash(const char* str, int table_size) {
+    unsigned long hash_value = 5381;
+    int c;
+
+    /* Process each character in the string */
+    while ((c = *str++)) {
+        hash_value = ((hash_value << 5) + hash_value) + c; /* hash * 33 + c */
+    }
+
+    return hash_value % table_size;
+}
+
+/* Create a new symbol table with specified size */
+SymbolTable* create_symbol_table(int size) {
+    SymbolTable* table = (SymbolTable*)malloc(sizeof(SymbolTable));
+    if (!table) {
+        fprintf(stderr, "Fatal Error: Failed to allocate symbol table\n");
+        exit(1);
+    }
+
+    /* Allocate array of symbol pointers (initially all NULL) */
+    table->table = (Symbol**)calloc(size, sizeof(Symbol*));
+    if (!table->table) {
+        fprintf(stderr, "Fatal Error: Failed to allocate symbol table array\n");
+        free(table);
+        exit(1);
+    }
+
+    table->size = size;
+    table->num_symbols = 0;
+
+    return table;
+}
+
+/* Add a new symbol to the table */
+int add_symbol(SymbolTable* table, const char* name, DataType type, int line) {
+    /* First check if symbol already exists (redeclaration error) */
+    if (lookup_symbol(table, name)) {
+        return 0;  /* Symbol already exists */
+    }
+
+    /* Calculate hash index */
+    unsigned int index = hash(name, table->size);
+
+    /* Create new symbol */
+    Symbol* new_symbol = (Symbol*)malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        fprintf(stderr, "Fatal Error: Failed to allocate symbol\n");
+        exit(1);
+    }
+
+    new_symbol->name = strdup(name);
+    new_symbol->type = type;
+    new_symbol->is_initialized = 0;  /* Not initialized until assigned */
+    new_symbol->declaration_line = line;
+    new_symbol->next = NULL;
+
+    /* Insert at the beginning of the chain (for collision handling) */
+    if (table->table[index] == NULL) {
+        table->table[index] = new_symbol;
+    } else {
+        /* Collision: add to front of linked list */
+        new_symbol->next = table->table[index];
+        table->table[index] = new_symbol;
+    }
+
+    table->num_symbols++;
+    return 1;  /* Success */
+}
+
+/* Look up a symbol by name */
+Symbol* lookup_symbol(SymbolTable* table, const char* name) {
+    unsigned int index = hash(name, table->size);
+    Symbol* current = table->table[index];
+
+    /* Search through the chain at this index */
+    while (current != NULL) {
+        if (strcmp(current->name, name) == 0) {
+            return current;  /* Found it */
+        }
+        current = current->next;
+    }
+
+    return NULL;  /* Not found */
+}
+
+/* Mark a symbol as initialized (called after assignment) */
+void mark_initialized(SymbolTable* table, const char* name) {
+    Symbol* symbol = lookup_symbol(table, name);
+    if (symbol) {
+        symbol->is_initialized = 1;
+    }
+}
+
+/* Check if a symbol has been initialized */
+int is_initialized(SymbolTable* table, const char* name) {
+    Symbol* symbol = lookup_symbol(table, name);
+    if (symbol) {
+        return symbol->is_initialized;
+    }
+    return 0;  /* Symbol not found or not initialized */
+}
+
+/* Convert data type to string representation */
+const char* type_to_string(DataType type) {
+    switch (type) {
+        case TYPE_INT:     return "int";
+        case TYPE_UNKNOWN: return "unknown";
+        default:           return "invalid";
+    }
+}
+
+/* Print the entire symbol table in a formatted way */
+void print_symbol_table(SymbolTable* table) {
+    printf("╔════════════════════════════════════════════════════════════╗\n");
+    printf("║ %-20s %-10s %-12s %-10s ║\n", "Variable", "Type", "Initialized", "Line");
+    printf("╠════════════════════════════════════════════════════════════╣\n");
+
+    int count = 0;
+
+    /* Iterate through all buckets */
+    for (int i = 0; i < table->size; i++) {
+        Symbol* current = table->table[i];
+
+        /* Traverse the chain at this bucket */
+        while (current != NULL) {
+            printf("║ %-20s %-10s %-12s %-10d ║\n",
+                   current->name,
+                   type_to_string(current->type),
+                   current->is_initialized ? "Yes" : "No",
+                   current->declaration_line);
+            count++;
+            current = current->next;
+        }
+    }
+
+    if (count == 0) {
+        printf("║ %-58s ║\n", "(No symbols in table)");
+    }
+
+    printf("╚════════════════════════════════════════════════════════════╝\n");
+    printf("Total symbols: %d\n", table->num_symbols);
+}
+
+/* Free all memory used by the symbol table */
+void free_symbol_table(SymbolTable* table) {
+    if (!table) return;
+
+    /* Free all symbols in all buckets */
+    for (int i = 0; i < table->size; i++) {
+        Symbol* current = table->table[i];
+
+        while (current != NULL) {
+            Symbol* next = current->next;
+            free(current->name);  /* Free the duplicated name string */
+            free(current);        /* Free the symbol structure */
+            current = next;
+        }
+    }
+
+    /* Free the table array and the table structure itself */
+    free(table->table);
+    free(table);
+}
