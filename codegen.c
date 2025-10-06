@@ -36,6 +36,8 @@ void gen_prologue(CodeGenerator* gen) {
     fprintf(gen->output_file, "; Target: x86-64 (64-bit)\n");
     fprintf(gen->output_file, "; Calling Convention: System V AMD64 ABI\n\n");
 
+    fprintf(gen->output_file, "section .note.GNU-stack noalloc noexec nowrite progbits\n\n");
+
     fprintf(gen->output_file, "section .data\n");
     fprintf(gen->output_file, "    ; Data section for constants\n");
     fprintf(gen->output_file, "    fmt_int: db \"%%d\", 10, 0  ; Format string for printing integers\n\n");
