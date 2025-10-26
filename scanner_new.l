@@ -26,6 +26,8 @@ WS          [ \t]
 %%
 
 "int"           { update_location(); yylval.str = strdup(yytext); return INT; }
+"void"          { update_location(); yylval.str = strdup(yytext); return VOID; }
+"return"        { update_location(); yylval.str = strdup(yytext); return RETURN; }
 "print"         { update_location(); yylval.str = strdup(yytext); return PRINT; }
 "while"         { update_location(); yylval.str = strdup(yytext); return WHILE; }
 
@@ -33,6 +35,10 @@ WS          [ \t]
 {NUM}           { update_location(); yylval.num = atoi(yytext); return NUM; }
 
 "+"             { update_location(); yylval.str = strdup(yytext); return PLUS; }
+"-"             { update_location(); yylval.str = strdup(yytext); return MINUS; }
+"*"             { update_location(); yylval.str = strdup(yytext); return MULT; }
+"/"             { update_location(); yylval.str = strdup(yytext); return DIV; }
+"%"             { update_location(); yylval.str = strdup(yytext); return MOD; }
 "="             { update_location(); yylval.str = strdup(yytext); return ASSIGN; }
 
 "<"             { update_location(); yylval.str = strdup(yytext); return RELOP; }
@@ -47,6 +53,9 @@ WS          [ \t]
 ")"             { update_location(); yylval.str = strdup(yytext); return RPAREN; }
 "{"             { update_location(); yylval.str = strdup(yytext); return LBRACE; }
 "}"             { update_location(); yylval.str = strdup(yytext); return RBRACE; }
+"["             { update_location(); yylval.str = strdup(yytext); return LBRACKET; }
+"]"             { update_location(); yylval.str = strdup(yytext); return RBRACKET; }
+","             { update_location(); yylval.str = strdup(yytext); return COMMA; }
 
 "//".*          { col_num += yyleng; char_count += yyleng; }
 

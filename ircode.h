@@ -23,13 +23,24 @@
 /* TAC Instruction Types */
 typedef enum {
     TAC_ADD,           /* result = op1 + op2 */
+    TAC_SUB,           /* result = op1 - op2 */
+    TAC_MUL,           /* result = op1 * op2 */
+    TAC_DIV,           /* result = op1 / op2 */
+    TAC_MOD,           /* result = op1 % op2 */
     TAC_ASSIGN,        /* result = op1 (copy) */
     TAC_LOAD_CONST,    /* result = constant */
     TAC_PRINT,         /* print(op1) */
     TAC_LABEL,         /* label: (for control flow) */
     TAC_GOTO,          /* goto label (unconditional jump) */
     TAC_IF_FALSE,      /* if_false op1 goto label (conditional jump) */
-    TAC_RELOP          /* result = op1 relop op2 (for conditions) */
+    TAC_RELOP,         /* result = op1 relop op2 (for conditions) */
+    TAC_ARRAY_STORE,   /* array[index] = value (arr, index, value) */
+    TAC_ARRAY_LOAD,    /* result = array[index] (result, arr, index) */
+    TAC_FUNCTION_LABEL,/* function_name: */
+    TAC_PARAM,         /* param value */
+    TAC_CALL,          /* result = call function_name, num_args */
+    TAC_RETURN,        /* return value */
+    TAC_RETURN_VOID    /* return (no value) */
 } TACOpcode;
 
 /* Three-Address Code Instruction */

@@ -100,14 +100,29 @@ char* gen_expression(ASTNode* node, TACCode* code) {
         }
 
         case NODE_BINARY_OP: {
-            /* Binary operation: op1 + op2 */
+            /* Binary operation: op1 operator op2 */
             char* left = gen_expression(node->data.binary_op.left, code);
             char* right = gen_expression(node->data.binary_op.right, code);
 
             char* result = new_temp();
 
-            /* Currently only support addition */
-            TACInstruction* inst = create_tac_instruction(TAC_ADD,
+            /* Determine the opcode based on operator */
+            TACOpcode opcode;
+            if (strcmp(node->data.binary_op.operator, "+") == 0) {
+                opcode = TAC_ADD;
+            } else if (strcmp(node->data.binary_op.operator, "-") == 0) {
+                opcode = TAC_SUB;
+            } else if (strcmp(node->data.binary_op.operator, "*") == 0) {
+                opcode = TAC_MUL;
+            } else if (strcmp(node->data.binary_op.operator, "/") == 0) {
+                opcode = TAC_DIV;
+            } else if (strcmp(node->data.binary_op.operator, "%") == 0) {
+                opcode = TAC_MOD;
+            } else {
+                opcode = TAC_ADD;  /* Default fallback */
+            }
+
+            TACInstruction* inst = create_tac_instruction(opcode,
                                                           result, left, right,
                                                           NULL);
             append_tac(code, inst);
@@ -127,6 +142,67 @@ char* gen_expression(ASTNode* node, TACCode* code) {
                                                           result, left, right,
                                                           node->data.binary_op.operator);
             append_tac(code, inst);
+
+            return result;
+        }
+
+        case NODE_ARRAY_ACCESS: {
+            /* Array access: arr[index] */
+            char* array_name = node->data.array_access.array_name;
+            char* index = gen_expression(node->data.array_access.index, code);
+
+            char* result = new_temp();
+
+            /* TAC_ARRAY_LOAD: result = array[index] */
+            TACInstruction* inst = create_tac_instruction(TAC_ARRAY_LOAD,
+                                                          result, array_name, index,
+                                                          NULL);
+            append_tac(code, inst);
+
+            return result;
+        }
+
+        case NODE_FUNCTION_CALL: {
+            /* Function call as expression: result = func(args) */
+            char* func_name = node->data.func_call.func_name;
+            ASTNode* args = node->data.func_call.args;
+
+            /* Generate param instructions for each argument */
+            int arg_count = 0;
+            ASTNode* current_arg = args;
+            while (current_arg) {
+                if (current_arg->type == NODE_ARG_LIST) {
+                    char* arg_result = gen_expression(current_arg->data.arg_list.arg, code);
+
+                    TACInstruction* param = create_tac_instruction(TAC_PARAM,
+                                                                   NULL, arg_result,
+                                                                   NULL, NULL);
+                    append_tac(code, param);
+
+                    arg_count++;
+                    current_arg = current_arg->data.arg_list.next;
+                } else {
+                    char* arg_result = gen_expression(current_arg, code);
+
+                    TACInstruction* param = create_tac_instruction(TAC_PARAM,
+                                                                   NULL, arg_result,
+                                                                   NULL, NULL);
+                    append_tac(code, param);
+
+                    arg_count++;
+                    break;
+                }
+            }
+
+            /* Generate call instruction */
+            char* result = new_temp();
+            char arg_count_str[20];
+            snprintf(arg_count_str, 20, "%d", arg_count);
+
+            TACInstruction* call = create_tac_instruction(TAC_CALL,
+                                                         result, arg_count_str,
+                                                         NULL, func_name);
+            append_tac(code, call);
 
             return result;
         }
@@ -223,6 +299,120 @@ void gen_statement(ASTNode* node, TACCode* code) {
             break;
         }
 
+        case NODE_FUNCTION_DEF: {
+            /* Function definition: type name(params) { body }
+             *
+             * Generated code structure:
+             *   FUNCTION function_name:    // Function label
+             *     <body statements>        // Function body
+             *     return_void              // Implicit return for void functions
+             */
+
+            char* func_name = node->data.function.func_name;
+
+            /* Generate function label */
+            TACInstruction* func_label = create_tac_instruction(TAC_FUNCTION_LABEL,
+                                                                NULL, NULL,
+                                                                NULL, func_name);
+            append_tac(code, func_label);
+
+            /* Generate code for function body */
+            gen_statement(node->data.function.body, code);
+
+            /* Add implicit return for void functions */
+            if (strcmp(node->data.function.return_type, "void") == 0) {
+                TACInstruction* ret_void = create_tac_instruction(TAC_RETURN_VOID,
+                                                                  NULL, NULL,
+                                                                  NULL, NULL);
+                append_tac(code, ret_void);
+            }
+
+            break;
+        }
+
+        case NODE_FUNCTION_CALL: {
+            /* Function call: result = func(arg1, arg2, ...)
+             *
+             * Generated code structure:
+             *   param arg1               // Push each argument
+             *   param arg2
+             *   result = call func, 2    // Call function with arg count
+             */
+
+            char* func_name = node->data.func_call.func_name;
+            ASTNode* args = node->data.func_call.args;
+
+            /* Count arguments and generate param instructions */
+            int arg_count = 0;
+            ASTNode* current_arg = args;
+            while (current_arg) {
+                if (current_arg->type == NODE_ARG_LIST) {
+                    /* Generate expression for this argument */
+                    char* arg_result = gen_expression(current_arg->data.arg_list.arg, code);
+
+                    /* Generate param instruction */
+                    TACInstruction* param = create_tac_instruction(TAC_PARAM,
+                                                                   NULL, arg_result,
+                                                                   NULL, NULL);
+                    append_tac(code, param);
+
+                    arg_count++;
+                    current_arg = current_arg->data.arg_list.next;
+                } else {
+                    /* Single argument */
+                    char* arg_result = gen_expression(current_arg, code);
+
+                    TACInstruction* param = create_tac_instruction(TAC_PARAM,
+                                                                   NULL, arg_result,
+                                                                   NULL, NULL);
+                    append_tac(code, param);
+
+                    arg_count++;
+                    break;
+                }
+            }
+
+            /* Generate call instruction */
+            char* result = new_temp();
+            char arg_count_str[20];
+            snprintf(arg_count_str, 20, "%d", arg_count);
+
+            TACInstruction* call = create_tac_instruction(TAC_CALL,
+                                                         result, arg_count_str,
+                                                         NULL, func_name);
+            append_tac(code, call);
+
+            break;
+        }
+
+        case NODE_RETURN: {
+            /* Return statement: return expr;
+             *
+             * Generated code:
+             *   return result            // Return with value
+             * or
+             *   return_void              // Return without value
+             */
+
+            if (node->data.return_stmt.expr) {
+                /* Return with value */
+                char* expr_result = gen_expression(node->data.return_stmt.expr, code);
+
+                TACInstruction* ret = create_tac_instruction(TAC_RETURN,
+                                                            NULL, expr_result,
+                                                            NULL, NULL);
+                append_tac(code, ret);
+            } else {
+                /* Return without value (void) */
+                TACInstruction* ret_void = create_tac_instruction(TAC_RETURN_VOID,
+                                                                  NULL, NULL,
+                                                                  NULL, NULL);
+                append_tac(code, ret_void);
+            }
+
+            break;
+        }
+
         default:
             break;
     }
@@ -239,7 +429,18 @@ TACCode* generate_tac(ASTNode* root) {
     label_count = 0;
 
     if (root && root->type == NODE_PROGRAM) {
-        gen_statement(root->data.program.statements, code);
+        /* Handle program with declaration list (may include functions) */
+        ASTNode* current = root->data.program.statements;
+
+        while (current) {
+            if (current->type == NODE_STATEMENT_LIST) {
+                gen_statement(current->data.stmt_list.statement, code);
+                current = current->data.stmt_list.next;
+            } else {
+                gen_statement(current, code);
+                break;
+            }
+        }
     }
 
     printf("Generated %d TAC instructions\n", code->instruction_count);
@@ -252,6 +453,10 @@ TACCode* generate_tac(ASTNode* root) {
 const char* opcode_to_string(TACOpcode opcode) {
     switch (opcode) {
         case TAC_ADD:        return "ADD";
+        case TAC_SUB:        return "SUB";
+        case TAC_MUL:        return "MUL";
+        case TAC_DIV:        return "DIV";
+        case TAC_MOD:        return "MOD";
         case TAC_ASSIGN:     return "ASSIGN";
         case TAC_LOAD_CONST: return "LOAD_CONST";
         case TAC_PRINT:      return "PRINT";
@@ -259,6 +464,13 @@ const char* opcode_to_string(TACOpcode opcode) {
         case TAC_GOTO:       return "GOTO";
         case TAC_IF_FALSE:   return "IF_FALSE";
         case TAC_RELOP:      return "RELOP";
+        case TAC_ARRAY_STORE: return "ARRAY_STORE";
+        case TAC_ARRAY_LOAD:  return "ARRAY_LOAD";
+        case TAC_FUNCTION_LABEL: return "FUNCTION";
+        case TAC_PARAM:       return "PARAM";
+        case TAC_CALL:        return "CALL";
+        case TAC_RETURN:      return "RETURN";
+        case TAC_RETURN_VOID: return "RETURN_VOID";
         default:             return "UNKNOWN";
     }
 }
@@ -278,6 +490,10 @@ void print_tac(TACCode* code) {
 
         switch (current->opcode) {
             case TAC_ADD:
+            case TAC_SUB:
+            case TAC_MUL:
+            case TAC_DIV:
+            case TAC_MOD:
                 printf(" %-10s %-10s %-10s\n",
                        current->result, current->op1, current->op2);
                 break;
@@ -314,6 +530,38 @@ void print_tac(TACCode* code) {
             case TAC_RELOP:
                 printf(" %-10s %-10s %-10s %-10s\n",
                        current->result, current->op1, current->op2, current->label);
+                break;
+
+            case TAC_ARRAY_LOAD:
+                printf(" %-10s %-10s %-10s (array load)\n",
+                       current->result, current->op1, current->op2);
+                break;
+
+            case TAC_ARRAY_STORE:
+                printf(" %-10s %-10s %-10s (array store)\n",
+                       current->result, current->op1, current->op2);
+                break;
+
+            case TAC_FUNCTION_LABEL:
+                printf(" %-10s %-10s %-10s %-10s\n",
+                       "-", "-", "-", current->label);
+                break;
+
+            case TAC_PARAM:
+                printf(" %-10s %-10s\n", "-", current->op1);
+                break;
+
+            case TAC_CALL:
+                printf(" %-10s %-10s %-10s (call)\n",
+                       current->result ? current->result : "-", current->label, current->op1);
+                break;
+
+            case TAC_RETURN:
+                printf(" %-10s %-10s\n", "-", current->op1);
+                break;
+
+            case TAC_RETURN_VOID:
+                printf("\n");
                 break;
 
             default:

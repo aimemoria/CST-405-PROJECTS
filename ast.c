@@ -100,6 +100,81 @@ ASTNode* create_num_node(int value) {
     return node;
 }
 
+/* Create an array declaration node: int arr[10]; (ARRAY FEATURE) */
+ASTNode* create_array_declaration_node(char* var_name, int size) {
+    ASTNode* node = create_ast_node(NODE_ARRAY_DECLARATION);
+    node->data.array_decl.var_name = strdup(var_name);
+    node->data.array_decl.size = size;
+    return node;
+}
+
+/* Create an array access node: arr[5] */
+ASTNode* create_array_access_node(char* array_name, ASTNode* index) {
+    ASTNode* node = create_ast_node(NODE_ARRAY_ACCESS);
+    node->data.array_access.array_name = strdup(array_name);
+    node->data.array_access.index = index;
+    return node;
+}
+
+/* Create a function declaration node: int foo(params); */
+ASTNode* create_function_decl_node(char* return_type, char* func_name, ASTNode* params) {
+    ASTNode* node = create_ast_node(NODE_FUNCTION_DECL);
+    node->data.function.return_type = strdup(return_type);
+    node->data.function.func_name = strdup(func_name);
+    node->data.function.params = params;
+    node->data.function.body = NULL;
+    return node;
+}
+
+/* Create a function definition node: int foo(params) { body } */
+ASTNode* create_function_def_node(char* return_type, char* func_name, ASTNode* params, ASTNode* body) {
+    ASTNode* node = create_ast_node(NODE_FUNCTION_DEF);
+    node->data.function.return_type = strdup(return_type);
+    node->data.function.func_name = strdup(func_name);
+    node->data.function.params = params;
+    node->data.function.body = body;
+    return node;
+}
+
+/* Create a function call node: foo(args) */
+ASTNode* create_function_call_node(char* func_name, ASTNode* args) {
+    ASTNode* node = create_ast_node(NODE_FUNCTION_CALL);
+    node->data.func_call.func_name = strdup(func_name);
+    node->data.func_call.args = args;
+    return node;
+}
+
+/* Create a return statement node: return expr; */
+ASTNode* create_return_node(ASTNode* expr) {
+    ASTNode* node = create_ast_node(NODE_RETURN);
+    node->data.return_stmt.expr = expr;
+    return node;
+}
+
+/* Create a parameter node: int x */
+ASTNode* create_param_node(char* type, char* name) {
+    ASTNode* node = create_ast_node(NODE_PARAM);
+    node->data.param.type = strdup(type);
+    node->data.param.name = strdup(name);
+    return node;
+}
+
+/* Create a parameter list node */
+ASTNode* create_param_list_node(ASTNode* param, ASTNode* next) {
+    ASTNode* node = create_ast_node(NODE_PARAM_LIST);
+    node->data.list.item = param;
+    node->data.list.next = next;
+    return node;
+}
+
+/* Create an argument list node */
+ASTNode* create_arg_list_node(ASTNode* arg, ASTNode* next) {
+    ASTNode* node = create_ast_node(NODE_ARG_LIST);
+    node->data.list.item = arg;
+    node->data.list.next = next;
+    return node;
+}
+
 /* Get string name for a node type (for debugging/printing) */
 const char* node_type_to_string(NodeType type) {
     switch (type) {
@@ -113,6 +188,15 @@ const char* node_type_to_string(NodeType type) {
         case NODE_BINARY_OP:      return "BINARY_OP";
         case NODE_IDENTIFIER:     return "IDENTIFIER";
         case NODE_NUMBER:         return "NUMBER";
+        case NODE_ARRAY_DECLARATION: return "ARRAY_DECLARATION";
+        case NODE_ARRAY_ACCESS:   return "ARRAY_ACCESS";
+        case NODE_FUNCTION_DECL:  return "FUNCTION_DECL";
+        case NODE_FUNCTION_DEF:   return "FUNCTION_DEF";
+        case NODE_FUNCTION_CALL:  return "FUNCTION_CALL";
+        case NODE_RETURN:         return "RETURN";
+        case NODE_PARAM:          return "PARAM";
+        case NODE_PARAM_LIST:     return "PARAM_LIST";
+        case NODE_ARG_LIST:       return "ARG_LIST";
         default:                  return "UNKNOWN";
     }
 }
@@ -189,6 +273,68 @@ void print_ast(ASTNode* node, int indent) {
                    node->data.num_value, node->line_number);
             break;
 
+        case NODE_ARRAY_DECLARATION:
+            printf("ARRAY_DECLARATION: int %s[%d]; (line %d)\n",
+                   node->data.array_decl.var_name,
+                   node->data.array_decl.size,
+                   node->line_number);
+            break;
+
+        case NODE_ARRAY_ACCESS:
+            printf("ARRAY_ACCESS: %s[...] (line %d)\n",
+                   node->data.array_access.array_name,
+                   node->line_number);
+            print_ast(node->data.array_access.index, indent + 1);
+            break;
+
+        case NODE_FUNCTION_DECL:
+            printf("FUNCTION_DECL: %s %s(...); (line %d)\n",
+                   node->data.function.return_type,
+                   node->data.function.func_name,
+                   node->line_number);
+            print_ast(node->data.function.params, indent + 1);
+            break;
+
+        case NODE_FUNCTION_DEF:
+            printf("FUNCTION_DEF: %s %s(...) {...} (line %d)\n",
+                   node->data.function.return_type,
+                   node->data.function.func_name,
+                   node->line_number);
+            print_ast(node->data.function.params, indent + 1);
+            print_ast(node->data.function.body, indent + 1);
+            break;
+
+        case NODE_FUNCTION_CALL:
+            printf("FUNCTION_CALL: %s(...) (line %d)\n",
+                   node->data.func_call.func_name,
+                   node->line_number);
+            print_ast(node->data.func_call.args, indent + 1);
+            break;
+
+        case NODE_RETURN:
+            printf("RETURN (line %d)\n", node->line_number);
+            print_ast(node->data.return_stmt.expr, indent + 1);
+            break;
+
+        case NODE_PARAM:
+            printf("PARAM: %s %s (line %d)\n",
+                   node->data.param.type,
+                   node->data.param.name,
+                   node->line_number);
+            break;
+
+        case NODE_PARAM_LIST:
+            printf("PARAM_LIST (line %d)\n", node->line_number);
+            print_ast(node->data.list.item, indent + 1);
+            print_ast(node->data.list.next, indent);
+            break;
+
+        case NODE_ARG_LIST:
+            printf("ARG_LIST (line %d)\n", node->line_number);
+            print_ast(node->data.list.item, indent + 1);
+            print_ast(node->data.list.next, indent);
+            break;
+
         default:
             printf("UNKNOWN NODE TYPE\n");
             break;
@@ -241,6 +387,15 @@ void free_ast(ASTNode* node) {
 
         case NODE_NUMBER:
             /* No dynamic memory to free */
+            break;
+
+        case NODE_ARRAY_DECLARATION:
+            free(node->data.array_decl.var_name);
+            break;
+
+        case NODE_ARRAY_ACCESS:
+            free(node->data.array_access.array_name);
+            free_ast(node->data.array_access.index);
             break;
     }
 

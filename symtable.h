@@ -16,16 +16,33 @@
 
 /* Data types supported by our language */
 typedef enum {
-    TYPE_INT,          /* Integer type (the only type currently) */
+    TYPE_INT,          /* Integer type */
+    TYPE_VOID,         /* Void type (for functions) */
     TYPE_UNKNOWN       /* Unknown/undefined type (for error handling) */
 } DataType;
 
-/* Symbol table entry - Represents one variable in the program */
+/* Symbol kind - variable or function */
+typedef enum {
+    SYMBOL_VARIABLE,   /* Regular variable or array */
+    SYMBOL_FUNCTION    /* Function */
+} SymbolKind;
+
+/* Symbol table entry - Represents one variable or function */
 typedef struct Symbol {
-    char* name;              /* Variable name (identifier) */
-    DataType type;           /* Data type (int, etc.) */
+    char* name;              /* Symbol name (identifier) */
+    SymbolKind kind;         /* Variable or function */
+    DataType type;           /* Data type (int, void, etc.) */
     int is_initialized;      /* Flag: has this variable been assigned a value? */
-    int declaration_line;    /* Source line where variable was declared */
+    int is_array;            /* Flag: is this an array? */
+    int array_size;          /* Size of array (if is_array is true) */
+
+    /* Function-specific fields */
+    DataType return_type;    /* Function return type */
+    int param_count;         /* Number of parameters */
+    DataType* param_types;   /* Array of parameter types */
+    char** param_names;      /* Array of parameter names */
+
+    int declaration_line;    /* Source line where symbol was declared */
     struct Symbol* next;     /* Next symbol in the hash chain (for collision handling) */
 } Symbol;
 
@@ -44,6 +61,15 @@ SymbolTable* create_symbol_table(int size);
 /* Add a symbol to the table
  * Returns 1 on success, 0 if symbol already exists (redeclaration error) */
 int add_symbol(SymbolTable* table, const char* name, DataType type, int line);
+
+/* Add an array symbol to the table
+ * Returns 1 on success, 0 if symbol already exists (redeclaration error) */
+int add_array_symbol(SymbolTable* table, const char* name, DataType type, int size, int line);
+
+/* Add a function symbol to the table
+ * Returns 1 on success, 0 if symbol already exists (redeclaration error) */
+int add_function_symbol(SymbolTable* table, const char* name, DataType return_type,
+                        int param_count, DataType* param_types, char** param_names, int line);
 
 /* Look up a symbol by name
  * Returns pointer to symbol if found, NULL otherwise */

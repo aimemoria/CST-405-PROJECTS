@@ -61,8 +61,114 @@ int add_symbol(SymbolTable* table, const char* name, DataType type, int line) {
     }
 
     new_symbol->name = strdup(name);
+    new_symbol->kind = SYMBOL_VARIABLE;
     new_symbol->type = type;
     new_symbol->is_initialized = 0;  /* Not initialized until assigned */
+    new_symbol->is_array = 0;         /* Not an array by default */
+    new_symbol->array_size = 0;       /* No array size by default */
+    new_symbol->return_type = TYPE_UNKNOWN;
+    new_symbol->param_count = 0;
+    new_symbol->param_types = NULL;
+    new_symbol->param_names = NULL;
+    new_symbol->declaration_line = line;
+    new_symbol->next = NULL;
+
+    /* Insert at the beginning of the chain (for collision handling) */
+    if (table->table[index] == NULL) {
+        table->table[index] = new_symbol;
+    } else {
+        /* Collision: add to front of linked list */
+        new_symbol->next = table->table[index];
+        table->table[index] = new_symbol;
+    }
+
+    table->num_symbols++;
+    return 1;  /* Success */
+}
+
+/* Add a new array symbol to the table */
+int add_array_symbol(SymbolTable* table, const char* name, DataType type, int size, int line) {
+    /* First check if symbol already exists (redeclaration error) */
+    if (lookup_symbol(table, name)) {
+        return 0;  /* Symbol already exists */
+    }
+
+    /* Calculate hash index */
+    unsigned int index = hash(name, table->size);
+
+    /* Create new symbol */
+    Symbol* new_symbol = (Symbol*)malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        fprintf(stderr, "Fatal Error: Failed to allocate symbol\n");
+        exit(1);
+    }
+
+    new_symbol->name = strdup(name);
+    new_symbol->kind = SYMBOL_VARIABLE;
+    new_symbol->type = type;
+    new_symbol->is_initialized = 1;  /* Arrays are considered initialized upon declaration */
+    new_symbol->is_array = 1;         /* This is an array */
+    new_symbol->array_size = size;    /* Store array size */
+    new_symbol->return_type = TYPE_UNKNOWN;
+    new_symbol->param_count = 0;
+    new_symbol->param_types = NULL;
+    new_symbol->param_names = NULL;
+    new_symbol->declaration_line = line;
+    new_symbol->next = NULL;
+
+    /* Insert at the beginning of the chain (for collision handling) */
+    if (table->table[index] == NULL) {
+        table->table[index] = new_symbol;
+    } else {
+        /* Collision: add to front of linked list */
+        new_symbol->next = table->table[index];
+        table->table[index] = new_symbol;
+    }
+
+    table->num_symbols++;
+    return 1;  /* Success */
+}
+
+/* Add a new function symbol to the table */
+int add_function_symbol(SymbolTable* table, const char* name, DataType return_type,
+                        int param_count, DataType* param_types, char** param_names, int line) {
+    /* First check if symbol already exists (redeclaration error) */
+    if (lookup_symbol(table, name)) {
+        return 0;  /* Symbol already exists */
+    }
+
+    /* Calculate hash index */
+    unsigned int index = hash(name, table->size);
+
+    /* Create new symbol */
+    Symbol* new_symbol = (Symbol*)malloc(sizeof(Symbol));
+    if (!new_symbol) {
+        fprintf(stderr, "Fatal Error: Failed to allocate symbol\n");
+        exit(1);
+    }
+
+    new_symbol->name = strdup(name);
+    new_symbol->kind = SYMBOL_FUNCTION;
+    new_symbol->type = return_type;
+    new_symbol->is_initialized = 1;  /* Functions are always "initialized" */
+    new_symbol->is_array = 0;
+    new_symbol->array_size = 0;
+    new_symbol->return_type = return_type;
+    new_symbol->param_count = param_count;
+
+    /* Allocate and copy parameter types */
+    if (param_count > 0) {
+        new_symbol->param_types = (DataType*)malloc(param_count * sizeof(DataType));
+        new_symbol->param_names = (char**)malloc(param_count * sizeof(char*));
+        for (int i = 0; i < param_count; i++) {
+            new_symbol->param_types[i] = param_types[i];
+            new_symbol->param_names[i] = strdup(param_names[i]);
+        }
+    } else {
+        new_symbol->param_types = NULL;
+        new_symbol->param_names = NULL;
+    }
+
     new_symbol->declaration_line = line;
     new_symbol->next = NULL;
 
@@ -116,6 +222,7 @@ int is_initialized(SymbolTable* table, const char* name) {
 const char* type_to_string(DataType type) {
     switch (type) {
         case TYPE_INT:     return "int";
+        case TYPE_VOID:    return "void";
         case TYPE_UNKNOWN: return "unknown";
         default:           return "invalid";
     }
