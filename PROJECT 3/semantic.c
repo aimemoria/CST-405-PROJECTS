@@ -6,24 +6,29 @@
  * variable declaration checking, and use-before-initialization detection.
  */
 
+#include <string.h>
 #include "semantic.h"
 
 /* Global error counter */
 int semantic_errors = 0;
 
+/* Current function scope for scoped symbol lookup */
+static const char* current_function_scope = "global";
+
 /* Report a semantic error with location information */
 void semantic_error(const char* message, int line) {
-    fprintf(stderr, "\n╔═══════════════════════════════════════════════════════════╗\n");
-    fprintf(stderr, "║ SEMANTIC ERROR                                            ║\n");
-    fprintf(stderr, "╠═══════════════════════════════════════════════════════════╣\n");
-    fprintf(stderr, "║ Line %d: %-48s ║\n", line, message);
-    fprintf(stderr, "╚═══════════════════════════════════════════════════════════╝\n\n");
+    fprintf(stderr, "\n+============================================================+\n");
+    fprintf(stderr, "| SEMANTIC ERROR                                            |\n");
+    fprintf(stderr, "+============================================================+\n");
+    fprintf(stderr, "| Line %d: %-48s |\n", line, message);
+    fprintf(stderr, "+============================================================+\n\n");
     semantic_errors++;
 }
 
 /* Check if a variable has been declared */
 int check_declared(const char* var_name, SymbolTable* symtab, int line) {
-    Symbol* symbol = lookup_symbol(symtab, var_name);
+    /* Use scope-aware lookup */
+    Symbol* symbol = lookup_symbol_in_scope(symtab, var_name, current_function_scope);
     if (!symbol) {
         char error_msg[100];
         snprintf(error_msg, sizeof(error_msg),
@@ -36,7 +41,8 @@ int check_declared(const char* var_name, SymbolTable* symtab, int line) {
 
 /* Check if a variable has been initialized before use */
 int check_initialized(const char* var_name, SymbolTable* symtab, int line) {
-    Symbol* symbol = lookup_symbol(symtab, var_name);
+    /* Use scope-aware lookup */
+    Symbol* symbol = lookup_symbol_in_scope(symtab, var_name, current_function_scope);
     if (symbol && !symbol->is_initialized) {
         char error_msg[100];
         snprintf(error_msg, sizeof(error_msg),
@@ -165,7 +171,7 @@ DataType analyze_expression(ASTNode* node, SymbolTable* symtab) {
                 DataType arg_type;
 
                 if (current_arg->type == NODE_ARG_LIST) {
-                    arg_type = analyze_expression(current_arg->data.arg_list.arg, symtab);
+                    arg_type = analyze_expression(current_arg->data.list.item, symtab);
                     arg_count++;
 
                     /* Check parameter type if available */
@@ -181,7 +187,7 @@ DataType analyze_expression(ASTNode* node, SymbolTable* symtab) {
                         }
                     }
 
-                    current_arg = current_arg->data.arg_list.next;
+                    current_arg = current_arg->data.list.next;
                 } else {
                     arg_type = analyze_expression(current_arg, symtab);
                     arg_count++;
@@ -221,6 +227,10 @@ DataType analyze_expression(ASTNode* node, SymbolTable* symtab) {
     }
 }
 
+/* Scoped analysis - These use lookup_symbol_in_scope instead of lookup_symbol */
+void analyze_statement_with_scope(ASTNode* node, SymbolTable* symtab, const char* scope);
+DataType analyze_expression_with_scope(ASTNode* node, SymbolTable* symtab, const char* scope);
+
 /* Analyze a single statement */
 void analyze_statement(ASTNode* node, SymbolTable* symtab) {
     if (!node) return;
@@ -252,8 +262,8 @@ void analyze_statement(ASTNode* node, SymbolTable* symtab) {
                 semantic_error("Type mismatch in assignment", node->line_number);
             }
 
-            /* Mark variable as initialized */
-            mark_initialized(symtab, var_name);
+            /* Mark variable as initialized (using current scope) */
+            mark_initialized_in_scope(symtab, var_name, current_function_scope);
 
             printf("[SEMANTIC] Assignment verified: %s = <expr>\n", var_name);
             break;
@@ -299,21 +309,95 @@ void analyze_statement(ASTNode* node, SymbolTable* symtab) {
         case NODE_FUNCTION_DEF: {
             /* Function definition: type name(params) { body } */
             const char* func_name = node->data.function.func_name;
+            const char* return_type = node->data.function.return_type;
+            ASTNode* params = node->data.function.params;
 
             printf("[SEMANTIC] Analyzing function '%s'...\n", func_name);
 
-            /* Function should already be in symbol table (added during parsing) */
-            Symbol* symbol = lookup_symbol(symtab, func_name);
-            if (!symbol) {
-                char error_msg[100];
-                snprintf(error_msg, sizeof(error_msg),
-                         "Function '%s' not found in symbol table", func_name);
-                semantic_error(error_msg, node->line_number);
-                break;
+            /* Convert return type string to DataType */
+            DataType ret_type = TYPE_INT;  /* Default to int */
+            if (strcmp(return_type, "void") == 0) {
+                ret_type = TYPE_VOID;
             }
 
-            /* Analyze function body */
-            analyze_statement(node->data.function.body, symtab);
+            /* First pass: Count parameters and collect their types */
+            int param_count = 0;
+            DataType* param_types = NULL;
+            char** param_names = NULL;
+
+            ASTNode* param_node = params;
+            while (param_node && param_node->type == NODE_PARAM_LIST) {
+                param_count++;
+                param_node = param_node->data.list.next;
+            }
+
+            /* Allocate arrays for parameter info */
+            if (param_count > 0) {
+                param_types = (DataType*)malloc(param_count * sizeof(DataType));
+                param_names = (char**)malloc(param_count * sizeof(char*));
+
+                /* Second pass: Collect parameter types and names */
+                param_node = params;
+                int idx = 0;
+                while (param_node && param_node->type == NODE_PARAM_LIST) {
+                    ASTNode* param = param_node->data.list.item;
+                    if (param && param->type == NODE_PARAM) {
+                        const char* param_type = param->data.param.type;
+                        const char* param_name = param->data.param.name;
+
+                        /* Convert param type */
+                        DataType p_type = TYPE_INT;
+                        if (strcmp(param_type, "void") == 0) {
+                            p_type = TYPE_VOID;
+                        }
+
+                        param_types[idx] = p_type;
+                        param_names[idx] = strdup(param_name);
+                        idx++;
+                    }
+                    param_node = param_node->data.list.next;
+                }
+            }
+
+            /* Add function to symbol table if not already present */
+            Symbol* symbol = lookup_symbol(symtab, func_name);
+            if (!symbol) {
+                /* Add function to global symbol table with correct parameter info */
+                add_function_symbol(symtab, func_name, ret_type, param_count, param_types, param_names, node->line_number);
+                symbol = lookup_symbol(symtab, func_name);
+                printf("[SEMANTIC] Function '%s' added to symbol table\n", func_name);
+            }
+
+            /* Add function parameters to symbol table with function scope and mark as initialized */
+            param_node = params;
+            while (param_node && param_node->type == NODE_PARAM_LIST) {
+                ASTNode* param = param_node->data.list.item;
+                if (param && param->type == NODE_PARAM) {
+                    const char* param_type = param->data.param.type;
+                    const char* param_name = param->data.param.name;
+
+                    /* Convert param type */
+                    DataType p_type = TYPE_INT;
+                    if (strcmp(param_type, "void") == 0) {
+                        p_type = TYPE_VOID;
+                    }
+
+                    /* Add parameter with function scope */
+                    add_parameter(symtab, param_name, p_type, param->line_number, func_name);
+
+                    /* IMPORTANT: Mark parameter as initialized (parameters are initialized by caller) */
+                    Symbol* param_symbol = lookup_symbol_in_scope(symtab, param_name, func_name);
+                    if (param_symbol) {
+                        param_symbol->is_initialized = 1;
+                    }
+
+                    printf("[SEMANTIC] Parameter '%s' added to function '%s' scope\n", param_name, func_name);
+                }
+                param_node = param_node->data.list.next;
+            }
+
+            /* Analyze function body with function scope */
+            analyze_statement_with_scope(node->data.function.body, symtab, func_name);
 
             printf("[SEMANTIC] Function '%s' verified\n", func_name);
             break;
@@ -349,7 +433,7 @@ void analyze_statement(ASTNode* node, SymbolTable* symtab) {
 
 /* Main semantic analysis function */
 int analyze_semantics(ASTNode* root, SymbolTable* symtab) {
-    printf("\n═══════════════ SEMANTIC ANALYSIS STARTED ═══════════════\n\n");
+    printf("\n=============== SEMANTIC ANALYSIS STARTED ===============\n\n");
 
     semantic_errors = 0;
 
@@ -363,7 +447,7 @@ int analyze_semantics(ASTNode* root, SymbolTable* symtab) {
         analyze_statement(root->data.program.statements, symtab);
     }
 
-    printf("\n═══════════════ SEMANTIC ANALYSIS COMPLETE ══════════════\n\n");
+    printf("\n=============== SEMANTIC ANALYSIS COMPLETE ==============\n\n");
 
     return semantic_errors;
 }
@@ -371,11 +455,28 @@ int analyze_semantics(ASTNode* root, SymbolTable* symtab) {
 /* Print semantic analysis summary */
 void print_semantic_summary() {
     if (semantic_errors == 0) {
-        printf("✓ SUCCESS: No semantic errors detected\n");
-        printf("✓ All variables properly declared and initialized\n");
-        printf("✓ All type checks passed\n\n");
+        printf("[OK] SUCCESS: No semantic errors detected\n");
+        printf("[OK] All variables properly declared and initialized\n");
+        printf("[OK] All type checks passed\n\n");
     } else {
-        printf("✗ FAILURE: %d semantic error(s) found\n", semantic_errors);
-        printf("✗ Please fix the errors before proceeding\n\n");
+        printf("[X] FAILURE: %d semantic error(s) found\n", semantic_errors);
+        printf("[X] Please fix the errors before proceeding\n\n");
     }
+}
+
+/* Scope-aware statement analysis */
+void analyze_statement_with_scope(ASTNode* node, SymbolTable* symtab, const char* scope) {
+    const char* old_scope = current_function_scope;
+    current_function_scope = scope;
+    analyze_statement(node, symtab);
+    current_function_scope = old_scope;
+}
+
+/* Scope-aware expression analysis */
+DataType analyze_expression_with_scope(ASTNode* node, SymbolTable* symtab, const char* scope) {
+    const char* old_scope = current_function_scope;
+    current_function_scope = scope;
+    DataType result = analyze_expression(node, symtab);
+    current_function_scope = old_scope;
+    return result;
 }

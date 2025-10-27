@@ -30,8 +30,14 @@ int analyze_semantics(ASTNode* root, SymbolTable* symtab);
 /* Analyze a single statement */
 void analyze_statement(ASTNode* node, SymbolTable* symtab);
 
+/* Analyze a statement with specific scope */
+void analyze_statement_with_scope(ASTNode* node, SymbolTable* symtab, const char* scope);
+
 /* Analyze an expression and return its type */
 DataType analyze_expression(ASTNode* node, SymbolTable* symtab);
+
+/* Analyze an expression with specific scope */
+DataType analyze_expression_with_scope(ASTNode* node, SymbolTable* symtab, const char* scope);
 
 /* Check if a variable has been declared */
 int check_declared(const char* var_name, SymbolTable* symtab, int line);

@@ -57,8 +57,8 @@ int main(int argc, char* argv[]) {
     }
 
     yyin = input_file;
-    printf("📄 Input file: %s\n", input_filename);
-    printf("📝 Output file: %s\n\n", output_filename);
+    printf("Input file: %s\n", input_filename);
+    printf("Output file: %s\n\n", output_filename);
 
     /* ===================================================================
      * PHASE 1 & 2: LEXICAL AND SYNTAX ANALYSIS
@@ -74,8 +74,8 @@ int main(int argc, char* argv[]) {
 
     /* Check for syntax errors */
     if (parse_result != 0 || syntax_errors > 0) {
-        fprintf(stderr, "\n✗ COMPILATION FAILED: Syntax errors detected\n");
-        fprintf(stderr, "✗ Please fix the errors and try again\n\n");
+        fprintf(stderr, "\n[X] COMPILATION FAILED: Syntax errors detected\n");
+        fprintf(stderr, "[X] Please fix the errors and try again\n\n");
 
         fclose(input_file);
         if (global_symtab) free_symbol_table(global_symtab);
@@ -83,9 +83,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    printf("✓ Lexical analysis complete\n");
-    printf("✓ Syntax analysis complete\n");
-    printf("✓ Abstract Syntax Tree (AST) constructed\n\n");
+    printf("[OK] Lexical analysis complete\n");
+    printf("[OK] Syntax analysis complete\n");
+    printf("[OK] Abstract Syntax Tree (AST) constructed\n\n");
 
     /* ===================================================================
      * PHASE 3: SEMANTIC ANALYSIS
@@ -96,8 +96,8 @@ int main(int argc, char* argv[]) {
     int semantic_result = analyze_semantics(ast_root, global_symtab);
 
     if (semantic_result > 0) {
-        fprintf(stderr, "\n✗ COMPILATION FAILED: Semantic errors detected\n");
-        fprintf(stderr, "✗ Please fix the errors and try again\n\n");
+        fprintf(stderr, "\n[X] COMPILATION FAILED: Semantic errors detected\n");
+        fprintf(stderr, "[X] Please fix the errors and try again\n\n");
 
         fclose(input_file);
         free_symbol_table(global_symtab);
@@ -108,12 +108,12 @@ int main(int argc, char* argv[]) {
     print_semantic_summary();
 
     /* Print AST for debugging */
-    printf("═══════════════ ABSTRACT SYNTAX TREE ══════════════════\n\n");
+    printf("=============== ABSTRACT SYNTAX TREE ==================\n\n");
     print_ast(ast_root, 0);
     printf("\n");
 
     /* Print symbol table */
-    printf("═══════════════════ SYMBOL TABLE ══════════════════════\n\n");
+    printf("=================== SYMBOL TABLE ======================\n\n");
     print_symbol_table(global_symtab);
     printf("\n");
 
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     TACCode* tac = generate_tac(ast_root);
 
     if (!tac) {
-        fprintf(stderr, "\n✗ COMPILATION FAILED: IR generation failed\n\n");
+        fprintf(stderr, "\n[X] COMPILATION FAILED: IR generation failed\n\n");
 
         fclose(input_file);
         free_symbol_table(global_symtab);
@@ -152,8 +152,8 @@ int main(int argc, char* argv[]) {
      * ================================================================ */
     print_summary(1);
 
-    printf("✓ Compilation successful!\n");
-    printf("✓ Assembly code written to: %s\n\n", output_filename);
+    printf("[OK] Compilation successful!\n");
+    printf("[OK] Assembly code written to: %s\n\n", output_filename);
 
     printf("To assemble and link (on Linux):\n");
     printf("  nasm -f elf64 %s -o output.o\n", output_filename);
@@ -172,40 +172,40 @@ int main(int argc, char* argv[]) {
 /* Print the compiler banner */
 void print_banner() {
     printf("\n");
-    printf("╔═══════════════════════════════════════════════════════════╗\n");
-    printf("║                                                           ║\n");
-    printf("║           CST-405 COMPLETE COMPILER SYSTEM                ║\n");
-    printf("║                                                           ║\n");
-    printf("║  A full-featured compiler with lexer, parser, semantic   ║\n");
-    printf("║  analyzer, intermediate code generator, and code gen.    ║\n");
-    printf("║                                                           ║\n");
-    printf("║  NEW FEATURE: While loops with relational operators      ║\n");
-    printf("║                                                           ║\n");
-    printf("╚═══════════════════════════════════════════════════════════╝\n\n");
+    printf("+============================================================+\n");
+    printf("|                                                           |\n");
+    printf("|           CST-405 COMPLETE COMPILER SYSTEM                |\n");
+    printf("|                                                           |\n");
+    printf("|  A full-featured compiler with lexer, parser, semantic   |\n");
+    printf("|  analyzer, intermediate code generator, and code gen.    |\n");
+    printf("|                                                           |\n");
+    printf("|  NEW FEATURE: While loops with relational operators      |\n");
+    printf("|                                                           |\n");
+    printf("+============================================================+\n\n");
 }
 
 /* Print phase separator */
 void print_phase_separator(const char* phase_name) {
-    printf("╔═══════════════════════════════════════════════════════════╗\n");
-    printf("║ %-57s ║\n", phase_name);
-    printf("╚═══════════════════════════════════════════════════════════╝\n\n");
+    printf("+============================================================+\n");
+    printf("| %-57s |\n", phase_name);
+    printf("+============================================================+\n\n");
 }
 
 /* Print compilation summary */
 void print_summary(int success) {
-    printf("╔═══════════════════════════════════════════════════════════╗\n");
-    printf("║                   COMPILATION SUMMARY                     ║\n");
-    printf("╠═══════════════════════════════════════════════════════════╣\n");
+    printf("+============================================================+\n");
+    printf("|                   COMPILATION SUMMARY                     |\n");
+    printf("+============================================================+\n");
 
     if (success) {
-        printf("║  Status:           ✓ SUCCESS                              ║\n");
-        printf("║  Lexical errors:   0                                      ║\n");
-        printf("║  Syntax errors:    0                                      ║\n");
-        printf("║  Semantic errors:  0                                      ║\n");
-        printf("║  Code generated:   Yes                                    ║\n");
+        printf("|  Status:           [OK] SUCCESS                              |\n");
+        printf("|  Lexical errors:   0                                      |\n");
+        printf("|  Syntax errors:    0                                      |\n");
+        printf("|  Semantic errors:  0                                      |\n");
+        printf("|  Code generated:   Yes                                    |\n");
     } else {
-        printf("║  Status:           ✗ FAILED                               ║\n");
+        printf("|  Status:           [X] FAILED                             |\n");
     }
 
-    printf("╚═══════════════════════════════════════════════════════════╝\n\n");
+    printf("+============================================================+\n\n");
 }

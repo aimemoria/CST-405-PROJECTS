@@ -32,29 +32,34 @@ int factorial(int n) {
     return result;
 }
 
-// Main program (implicit main)
+// Global variables
 int x;
 int y;
 int sum;
 int product;
 int fact;
-
-x = 5;
-y = 10;
-
-// Call add function
-sum = add(x, y);
-print(sum);  // Should print 15
-
-// Call multiply function
-product = multiply(x, y);
-print(product);  // Should print 50
-
-// Call factorial function
-fact = factorial(5);
-print(fact);  // Should print 120
-
-// Nested function calls
 int result;
-result = add(multiply(2, 3), multiply(4, 5));
-print(result);  // Should print 26 (6 + 20)
+
+// Main program
+int main() {
+    x = 5;
+    y = 10;
+
+    // Call add function
+    sum = add(x, y);
+    print(sum);  // Should print 15
+
+    // Call multiply function
+    product = multiply(x, y);
+    print(product);  // Should print 50
+
+    // Call factorial function
+    fact = factorial(5);
+    print(fact);  // Should print 120
+
+    // Nested function calls
+    result = add(multiply(2, 3), multiply(4, 5));
+    print(result);  // Should print 26 (6 + 20)
+
+    return 0;
+}

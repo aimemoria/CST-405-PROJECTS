@@ -312,7 +312,7 @@ void gen_tac_instruction(CodeGenerator* gen, TACInstruction* inst) {
 
 /* Generate assembly code from TAC */
 void generate_assembly(CodeGenerator* gen, TACCode* tac) {
-    printf("\n═══════════════ CODE GENERATION STARTED ═══════════════════\n\n");
+    printf("\n=============== CODE GENERATION STARTED ===================\n\n");
 
     /* Generate prologue */
     gen_prologue(gen);
@@ -330,7 +330,7 @@ void generate_assembly(CodeGenerator* gen, TACCode* tac) {
     printf("Assembly code generated successfully\n");
     printf("Output file: output.asm\n");
 
-    printf("\n═══════════════ CODE GENERATION COMPLETE ══════════════════\n\n");
+    printf("\n=============== CODE GENERATION COMPLETE ==================\n\n");
 }
 
 /* Close and cleanup code generator */

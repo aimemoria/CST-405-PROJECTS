@@ -42,6 +42,9 @@ typedef struct Symbol {
     DataType* param_types;   /* Array of parameter types */
     char** param_names;      /* Array of parameter names */
 
+    /* Scope management */
+    char* scope;             /* Scope name (e.g., "global", "main", "addNumbers") */
+
     int declaration_line;    /* Source line where symbol was declared */
     struct Symbol* next;     /* Next symbol in the hash chain (for collision handling) */
 } Symbol;
@@ -78,6 +81,9 @@ Symbol* lookup_symbol(SymbolTable* table, const char* name);
 /* Mark a symbol as initialized (for use-before-init checking) */
 void mark_initialized(SymbolTable* table, const char* name);
 
+/* Mark a symbol as initialized in a specific scope */
+void mark_initialized_in_scope(SymbolTable* table, const char* name, const char* scope);
+
 /* Check if a symbol is initialized */
 int is_initialized(SymbolTable* table, const char* name);
 
@@ -89,6 +95,17 @@ void free_symbol_table(SymbolTable* table);
 
 /* Get string representation of a data type */
 const char* type_to_string(DataType type);
+
+/* SCOPE MANAGEMENT FUNCTIONS */
+
+/* Add a symbol with specific scope */
+int add_symbol_with_scope(SymbolTable* table, const char* name, DataType type, int line, const char* scope);
+
+/* Lookup symbol in specific scope first, then global */
+Symbol* lookup_symbol_in_scope(SymbolTable* table, const char* name, const char* current_scope);
+
+/* Add function parameter to symbol table */
+int add_parameter(SymbolTable* table, const char* name, DataType type, int line, const char* function_scope);
 
 /* HASH FUNCTION (Internal use) */
 unsigned int hash(const char* str, int table_size);

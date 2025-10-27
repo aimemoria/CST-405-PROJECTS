@@ -172,7 +172,7 @@ char* gen_expression(ASTNode* node, TACCode* code) {
             ASTNode* current_arg = args;
             while (current_arg) {
                 if (current_arg->type == NODE_ARG_LIST) {
-                    char* arg_result = gen_expression(current_arg->data.arg_list.arg, code);
+                    char* arg_result = gen_expression(current_arg->data.list.item, code);
 
                     TACInstruction* param = create_tac_instruction(TAC_PARAM,
                                                                    NULL, arg_result,
@@ -180,7 +180,7 @@ char* gen_expression(ASTNode* node, TACCode* code) {
                     append_tac(code, param);
 
                     arg_count++;
-                    current_arg = current_arg->data.arg_list.next;
+                    current_arg = current_arg->data.list.next;
                 } else {
                     char* arg_result = gen_expression(current_arg, code);
 
@@ -348,7 +348,7 @@ void gen_statement(ASTNode* node, TACCode* code) {
             while (current_arg) {
                 if (current_arg->type == NODE_ARG_LIST) {
                     /* Generate expression for this argument */
-                    char* arg_result = gen_expression(current_arg->data.arg_list.arg, code);
+                    char* arg_result = gen_expression(current_arg->data.list.item, code);
 
                     /* Generate param instruction */
                     TACInstruction* param = create_tac_instruction(TAC_PARAM,
@@ -357,7 +357,7 @@ void gen_statement(ASTNode* node, TACCode* code) {
                     append_tac(code, param);
 
                     arg_count++;
-                    current_arg = current_arg->data.arg_list.next;
+                    current_arg = current_arg->data.list.next;
                 } else {
                     /* Single argument */
                     char* arg_result = gen_expression(current_arg, code);
@@ -420,7 +420,7 @@ void gen_statement(ASTNode* node, TACCode* code) {
 
 /* Generate TAC for the entire program */
 TACCode* generate_tac(ASTNode* root) {
-    printf("\n═══════════ INTERMEDIATE CODE GENERATION STARTED ══════════\n\n");
+    printf("\n=========== INTERMEDIATE CODE GENERATION STARTED ==========\n\n");
 
     TACCode* code = create_tac_code();
 
@@ -444,7 +444,7 @@ TACCode* generate_tac(ASTNode* root) {
     }
 
     printf("Generated %d TAC instructions\n", code->instruction_count);
-    printf("\n═══════════ INTERMEDIATE CODE GENERATION COMPLETE ═════════\n");
+    printf("\n=========== INTERMEDIATE CODE GENERATION COMPLETE =========\n");
 
     return code;
 }
@@ -477,10 +477,10 @@ const char* opcode_to_string(TACOpcode opcode) {
 
 /* Print the TAC code in a readable format */
 void print_tac(TACCode* code) {
-    printf("\n═══════════════ THREE-ADDRESS CODE (TAC) ══════════════════\n\n");
+    printf("\n=============== THREE-ADDRESS CODE (TAC) ==================\n\n");
     printf("%-5s %-15s %-10s %-10s %-10s %-10s\n",
            "Line", "Opcode", "Result", "Op1", "Op2", "Label");
-    printf("────────────────────────────────────────────────────────────\n");
+    printf("------------------------------------------------------------\n");
 
     TACInstruction* current = code->head;
     int line_num = 0;
@@ -572,7 +572,7 @@ void print_tac(TACCode* code) {
         current = current->next;
     }
 
-    printf("════════════════════════════════════════════════════════════\n");
+    printf("============================================================\n");
     printf("Total instructions: %d\n\n", code->instruction_count);
 }
 
