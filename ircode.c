@@ -292,6 +292,116 @@ void gen_statement(ASTNode* node, TACCode* code) {
             break;
         }
 
+        case NODE_FOR: {
+            /* For loop: for (init; condition; update) { body }
+             *
+             * Generated code structure:
+             *   <init>                    // Initialization
+             *   L_start:                  // Loop start label
+             *     temp = condition        // Evaluate condition
+             *     if_false temp goto L_end  // Exit if false
+             *     <body>                  // Loop body
+             *     <update>                // Update statement
+             *     goto L_start            // Jump back to start
+             *   L_end:                    // Loop end label
+             */
+
+            /* Generate initialization */
+            gen_statement(node->data.for_loop.init, code);
+
+            char* label_start = new_label();
+            char* label_end = new_label();
+
+            /* L_start: */
+            TACInstruction* start_label = create_tac_instruction(TAC_LABEL,
+                                                                 NULL, NULL,
+                                                                 NULL, label_start);
+            append_tac(code, start_label);
+
+            /* Evaluate condition */
+            char* cond_result = gen_expression(node->data.for_loop.condition, code);
+
+            /* if_false cond_result goto L_end */
+            TACInstruction* if_false = create_tac_instruction(TAC_IF_FALSE,
+                                                              NULL, cond_result,
+                                                              NULL, label_end);
+            append_tac(code, if_false);
+
+            /* Generate code for loop body */
+            gen_statement(node->data.for_loop.body, code);
+
+            /* Generate update statement */
+            gen_statement(node->data.for_loop.update, code);
+
+            /* goto L_start */
+            TACInstruction* goto_start = create_tac_instruction(TAC_GOTO,
+                                                                NULL, NULL,
+                                                                NULL, label_start);
+            append_tac(code, goto_start);
+
+            /* L_end: */
+            TACInstruction* end_label = create_tac_instruction(TAC_LABEL,
+                                                               NULL, NULL,
+                                                               NULL, label_end);
+            append_tac(code, end_label);
+
+            break;
+        }
+
+        case NODE_DO_WHILE: {
+            /* Do-While loop: do { body } while (condition);
+             *
+             * Generated code structure:
+             *   L_start:                  // Loop start label
+             *     <body>                  // Loop body (executes first)
+             *     temp = condition        // Evaluate condition
+             *     if_true temp goto L_start  // Continue if true
+             *   L_end:                    // Loop end label (implicit)
+             */
+
+            char* label_start = new_label();
+
+            /* L_start: */
+            TACInstruction* start_label = create_tac_instruction(TAC_LABEL,
+                                                                 NULL, NULL,
+                                                                 NULL, label_start);
+            append_tac(code, start_label);
+
+            /* Generate code for loop body first */
+            gen_statement(node->data.do_while_loop.body, code);
+
+            /* Evaluate condition */
+            char* cond_result = gen_expression(node->data.do_while_loop.condition, code);
+
+            /* For do-while, we want to continue if condition is TRUE */
+            /* We can use a temporary to invert the logic or create a new TAC instruction */
+            /* For simplicity, we'll generate: if_true cond_result goto L_start */
+            /* However, TAC_IF_FALSE is available, so we need to work around it */
+            
+            /* Create a label for fallthrough (end of loop) */
+            char* label_end = new_label();
+            
+            /* if_false cond_result goto L_end */
+            TACInstruction* if_false = create_tac_instruction(TAC_IF_FALSE,
+                                                              NULL, cond_result,
+                                                              NULL, label_end);
+            append_tac(code, if_false);
+
+            /* goto L_start (if condition was true) */
+            TACInstruction* goto_start = create_tac_instruction(TAC_GOTO,
+                                                                NULL, NULL,
+                                                                NULL, label_start);
+            append_tac(code, goto_start);
+
+            /* L_end: */
+            TACInstruction* end_label = create_tac_instruction(TAC_LABEL,
+                                                               NULL, NULL,
+                                                               NULL, label_end);
+            append_tac(code, end_label);
+
+            break;
+        }
+
         case NODE_IF: {
             /* If statement: if (condition) { then_branch } [else { else_branch }]
              *

@@ -29,8 +29,6 @@ WS          [ \t]
 "void"          { update_location(); yylval.str = strdup(yytext); return VOID; }
 "return"        { update_location(); yylval.str = strdup(yytext); return RETURN; }
 "print"         { update_location(); yylval.str = strdup(yytext); return PRINT; }
-"for"           { update_location(); yylval.str = strdup(yytext); return FOR; }
-"do"            { update_location(); yylval.str = strdup(yytext); return DO; }
 "while"         { update_location(); yylval.str = strdup(yytext); return WHILE; }
 "if"            { update_location(); yylval.str = strdup(yytext); return IF; }
 "else"          { update_location(); yylval.str = strdup(yytext); return ELSE; }

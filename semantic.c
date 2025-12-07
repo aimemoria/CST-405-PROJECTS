@@ -297,6 +297,48 @@ void analyze_statement(ASTNode* node, SymbolTable* symtab) {
 
             printf("[SEMANTIC] While loop verified\n");
             break;
+
+        case NODE_FOR: {
+            /* For loop: for (init; condition; update) { body } */
+            printf("[SEMANTIC] Analyzing for loop...\n");
+
+            /* Analyze the initialization */
+            analyze_statement(node->data.for_loop.init, symtab);
+
+            /* Analyze the condition */
+            DataType cond_type = analyze_expression(node->data.for_loop.condition, symtab);
+
+            if (cond_type == TYPE_UNKNOWN) {
+                /* Error already reported */
+            }
+
+            /* Analyze the update */
+            analyze_statement(node->data.for_loop.update, symtab);
+
+            /* Analyze the body (which may be a statement list) */
+            analyze_statement(node->data.for_loop.body, symtab);
+
+            printf("[SEMANTIC] For loop verified\n");
+            break;
+        }
+
+        case NODE_DO_WHILE: {
+            /* Do-While loop: do { body } while (condition); */
+            printf("[SEMANTIC] Analyzing do-while loop...\n");
+
+            /* Analyze the body first (since it executes before condition check) */
+            analyze_statement(node->data.do_while_loop.body, symtab);
+
+            /* Analyze the condition */
+            DataType cond_type = analyze_expression(node->data.do_while_loop.condition, symtab);
+
+            if (cond_type == TYPE_UNKNOWN) {
+                /* Error already reported */
+            }
+
+            printf("[SEMANTIC] Do-while loop verified\n");
+            break;
+        }
         }
 
         case NODE_IF: {

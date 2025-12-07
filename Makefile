@@ -14,8 +14,8 @@ TARGET = compiler
 # Source files
 LEX_SRC = scanner_new.l
 YACC_SRC = parser.y
-C_SOURCES = compiler.c ast.c symtable.c semantic.c ircode.c codegen.c
-OBJECTS = compiler.o parser.tab.o lex.yy.o ast.o symtable.o semantic.o ircode.o codegen.o
+C_SOURCES = compiler.c ast.c symtable.c semantic.c ircode.c optimizer.c codegen.c codegen_mips.c diagnostics.c security.c
+OBJECTS = compiler.o parser.tab.o lex.yy.o ast.o symtable.o semantic.o ircode.o optimizer.o codegen.o codegen_mips.o diagnostics.o security.o
 
 # Generated files
 LEX_OUTPUT = lex.yy.c
@@ -89,13 +89,33 @@ ircode.o: ircode.c ircode.h ast.h symtable.h
 	@echo "Compiling IR code generator..."
 	$(CC) $(CFLAGS) -c ircode.c
 
-# Compile code generator
+# Compile optimizer
+optimizer.o: optimizer.c optimizer.h ircode.h
+	@echo "Compiling optimizer..."
+	$(CC) $(CFLAGS) -c optimizer.c
+
+# Compile x86-64 code generator
 codegen.o: codegen.c codegen.h ircode.h symtable.h
-	@echo "Compiling code generator..."
+	@echo "Compiling x86-64 code generator..."
 	$(CC) $(CFLAGS) -c codegen.c
 
+# Compile MIPS code generator
+codegen_mips.o: codegen_mips.c codegen_mips.h ircode.h symtable.h
+	@echo "Compiling MIPS code generator..."
+	$(CC) $(CFLAGS) -c codegen_mips.c
+
+# Compile diagnostics module
+diagnostics.o: diagnostics.c diagnostics.h
+	@echo "Compiling diagnostics module..."
+	$(CC) $(CFLAGS) -c diagnostics.c
+
+# Compile security analysis module
+security.o: security.c security.h ast.h symtable.h diagnostics.h
+	@echo "Compiling security analysis module..."
+	$(CC) $(CFLAGS) -c security.c
+
 # Compile main compiler driver
-compiler.o: compiler.c ast.h symtable.h semantic.h ircode.h codegen.h
+compiler.o: compiler.c ast.h symtable.h semantic.h ircode.h optimizer.h codegen.h codegen_mips.h diagnostics.h security.h
 	@echo "Compiling main compiler driver..."
 	$(CC) $(CFLAGS) -c compiler.c
 
@@ -165,7 +185,7 @@ run: $(TARGET)
 clean:
 	@echo "Cleaning generated files..."
 	rm -f $(TARGET) $(OBJECTS) $(LEX_OUTPUT) $(YACC_OUTPUT) $(YACC_REPORT)
-	rm -f output.asm output.o program
+	rm -f output.asm output_mips.asm output.ir output.o program
 	@echo "✓ Clean complete"
 
 # Deep clean (including backup files)
@@ -190,9 +210,10 @@ info:
 	@echo "  2. Syntax Analysis (Bison)"
 	@echo "  3. Semantic Analysis"
 	@echo "  4. Intermediate Code Generation (TAC)"
-	@echo "  5. Assembly Code Generation (x86-64)"
+	@echo "  5. Code Optimization"
+	@echo "  6. Assembly Code Generation (x86-64 or MIPS)"
 	@echo ""
-	@echo "New Feature: While loops with relational operators"
+	@echo "Features: Loops, if/else, functions, arrays, optimization"
 	@echo "════════════════════════════════════════════════════"
 	@echo ""
 
@@ -210,6 +231,10 @@ help:
 	@echo "  make distclean     - Remove all generated files"
 	@echo "  make info          - Show compiler information"
 	@echo "  make help          - Show this help message"
+	@echo ""
+	@echo "Usage:"
+	@echo "  ./compiler program.src          - Generate x86-64 assembly"
+	@echo "  ./compiler program.src --mips   - Generate MIPS assembly"
 	@echo ""
 
 # ============================================================

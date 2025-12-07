@@ -8,9 +8,10 @@
  *   2. Syntax Analysis (Parsing)
  *   3. Semantic Analysis
  *   4. Intermediate Code Generation (TAC)
- *   5. Code Generation (Assembly)
+ *   5. Code Optimization
+ *   6. Code Generation (Assembly)
  *
- * NEW FEATURE: Support for while loops with relational operators
+ * FEATURES: Loops (while/for/do-while), if/else, functions, arrays
  */
 
 #include <stdio.h>
@@ -20,7 +21,11 @@
 #include "symtable.h"
 #include "semantic.h"
 #include "ircode.h"
+#include "optimizer.h"
 #include "codegen.h"
+#include "codegen_mips.h"
+#include "diagnostics.h"
+#include "security.h"
 
 /* External declarations from parser */
 extern int yyparse();
@@ -41,13 +46,48 @@ int main(int argc, char* argv[]) {
 
     /* Check command line arguments */
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <input_file>\n", argv[0]);
-        fprintf(stderr, "Example: %s program.src\n", argv[0]);
+        fprintf(stderr, "Usage: %s <input_file> [options]\n", argv[0]);
+        fprintf(stderr, "Options:\n");
+        fprintf(stderr, "  --mips          Generate MIPS assembly instead of x86-64\n");
+        fprintf(stderr, "  --verbose       Enable verbose output and debugging info\n");
+        fprintf(stderr, "  --log <file>    Write diagnostics to log file\n");
+        fprintf(stderr, "  --no-warnings   Suppress warning messages\n");
+        fprintf(stderr, "  --Werror        Treat warnings as errors\n");
+        fprintf(stderr, "\nExample: %s program.src --verbose --mips\n", argv[0]);
         return 1;
     }
 
     const char* input_filename = argv[1];
+    int use_mips = 0;
+    int verbose = 0;
+    int warnings_as_errors = 0;
+    int show_warnings = 1;
+    const char* log_file = NULL;
     const char* output_filename = "output.asm";
+
+    /* Parse command line flags */
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "--mips") == 0) {
+            use_mips = 1;
+            output_filename = "output_mips.asm";
+        } else if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+            verbose = 1;
+        } else if (strcmp(argv[i], "--Werror") == 0) {
+            warnings_as_errors = 1;
+        } else if (strcmp(argv[i], "--no-warnings") == 0) {
+            show_warnings = 0;
+        } else if (strcmp(argv[i], "--log") == 0 && i + 1 < argc) {
+            log_file = argv[++i];
+        }
+    }
+
+    /* Initialize diagnostics system */
+    init_diagnostics(verbose, warnings_as_errors);
+    diag_config.show_warnings = show_warnings;
+
+    if (log_file) {
+        set_diagnostic_log_file(log_file);
+    }
 
     /* Open input file */
     FILE* input_file = fopen(input_filename, "r");
@@ -58,7 +98,8 @@ int main(int argc, char* argv[]) {
 
     yyin = input_file;
     printf("Input file: %s\n", input_filename);
-    printf("Output file: %s\n\n", output_filename);
+    printf("Output file: %s\n", output_filename);
+    printf("Target: %s\n\n", use_mips ? "MIPS (QtSpim/MARS)" : "x86-64 (NASM)");
 
     /* ===================================================================
      * PHASE 1 & 2: LEXICAL AND SYNTAX ANALYSIS
@@ -134,18 +175,68 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    /* Print TAC */
+    /* Print TAC before optimization */
     print_tac(tac);
 
-    /* ===================================================================
-     * PHASE 5: CODE GENERATION
-     * Generate assembly code from TAC
-     * ================================================================ */
-    print_phase_separator("PHASE 5: ASSEMBLY CODE GENERATION");
+    /* Save IR to file */
+    FILE* ir_file = fopen("output.ir", "w");
+    if (ir_file) {
+        TACInstruction* inst = tac->head;
+        while (inst) {
+            fprintf(ir_file, "%s", opcode_to_string(inst->opcode));
+            if (inst->result) fprintf(ir_file, " %s", inst->result);
+            if (inst->op1) fprintf(ir_file, " %s", inst->op1);
+            if (inst->op2) fprintf(ir_file, " %s", inst->op2);
+            if (inst->label) fprintf(ir_file, " %s", inst->label);
+            fprintf(ir_file, "\n");
+            inst = inst->next;
+        }
+        fclose(ir_file);
+        printf("[OK] Intermediate code saved to: output.ir\n\n");
+    }
 
-    CodeGenerator* codegen = create_code_generator(output_filename, global_symtab);
-    generate_assembly(codegen, tac);
-    close_code_generator(codegen);
+    /* ===================================================================
+     * PHASE 5: CODE OPTIMIZATION
+     * Optimize the intermediate representation
+     * ================================================================ */
+    print_phase_separator("PHASE 5: CODE OPTIMIZATION");
+
+    OptimizationStats opt_stats;
+    optimize_tac(tac, &opt_stats);
+    print_optimization_stats(&opt_stats);
+
+    /* Print optimized TAC */
+    if (verbose) {
+        printf("=============== OPTIMIZED TAC ==================\n\n");
+        print_tac(tac);
+    }
+
+    /* ===================================================================
+     * PHASE 5.5: SECURITY ANALYSIS
+     * Check for unsafe constructs and security vulnerabilities
+     * ================================================================ */
+    print_phase_separator("PHASE 5.5: SECURITY ANALYSIS");
+
+    SecurityCheckResults* security_results = analyze_security(ast_root, global_symtab);
+    print_security_report(security_results);
+
+    /* ===================================================================
+     * PHASE 6: CODE GENERATION
+     * Generate assembly code from optimized TAC
+     * ================================================================ */
+    print_phase_separator("PHASE 6: ASSEMBLY CODE GENERATION");
+
+    if (use_mips) {
+        /* Generate MIPS assembly */
+        MIPSCodeGenerator* mips_gen = create_mips_code_generator(output_filename, global_symtab);
+        generate_mips_assembly(mips_gen, tac);
+        close_mips_code_generator(mips_gen);
+    } else {
+        /* Generate x86-64 assembly */
+        CodeGenerator* codegen = create_code_generator(output_filename, global_symtab);
+        generate_assembly(codegen, tac);
+        close_code_generator(codegen);
+    }
 
     /* ===================================================================
      * COMPILATION COMPLETE
@@ -155,16 +246,29 @@ int main(int argc, char* argv[]) {
     printf("[OK] Compilation successful!\n");
     printf("[OK] Assembly code written to: %s\n\n", output_filename);
 
-    printf("To assemble and link (on Linux):\n");
-    printf("  nasm -f elf64 %s -o output.o\n", output_filename);
-    printf("  gcc output.o -o program -no-pie\n");
-    printf("  ./program\n\n");
+    if (use_mips) {
+        printf("To run on QtSpim or MARS:\n");
+        printf("  1. Open %s in QtSpim or MARS simulator\n", output_filename);
+        printf("  2. Assemble and run the program\n\n");
+    } else {
+        printf("To assemble and link (on Linux):\n");
+        printf("  nasm -f elf64 %s -o output.o\n", output_filename);
+        printf("  gcc output.o -o program -no-pie\n");
+        printf("  ./program\n\n");
+    }
+
+    /* ===================================================================
+     * FINAL DIAGNOSTICS
+     * ================================================================ */
+    print_diagnostic_summary();
 
     /* Cleanup */
     fclose(input_file);
     free_ast(ast_root);
     free_symbol_table(global_symtab);
     free_tac(tac);
+    free_security_results(security_results);
+    close_diagnostics();
 
     return 0;
 }
@@ -198,10 +302,11 @@ void print_summary(int success) {
     printf("+============================================================+\n");
 
     if (success) {
-        printf("|  Status:           [OK] SUCCESS                              |\n");
+        printf("|  Status:           [OK] SUCCESS                           |\n");
         printf("|  Lexical errors:   0                                      |\n");
         printf("|  Syntax errors:    0                                      |\n");
         printf("|  Semantic errors:  0                                      |\n");
+        printf("|  Optimization:     Enabled                                |\n");
         printf("|  Code generated:   Yes                                    |\n");
     } else {
         printf("|  Status:           [X] FAILED                             |\n");

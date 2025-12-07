@@ -68,6 +68,24 @@ ASTNode* create_while_node(ASTNode* condition, ASTNode* body) {
     return node;
 }
 
+/* Create a for loop node: for (init; condition; update) { body } (NEW FEATURE) */
+ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* update, ASTNode* body) {
+    ASTNode* node = create_ast_node(NODE_FOR);
+    node->data.for_loop.init = init;
+    node->data.for_loop.condition = condition;
+    node->data.for_loop.update = update;
+    node->data.for_loop.body = body;
+    return node;
+}
+
+/* Create a do-while loop node: do { body } while (condition); (NEW FEATURE) */
+ASTNode* create_do_while_node(ASTNode* condition, ASTNode* body) {
+    ASTNode* node = create_ast_node(NODE_DO_WHILE);
+    node->data.do_while_loop.condition = condition;
+    node->data.do_while_loop.body = body;
+    return node;
+}
+
 /* Create an if statement node: if (condition) { then_branch } [else { else_branch }] (NEW FEATURE) */
 ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch) {
     ASTNode* node = create_ast_node(NODE_IF);
@@ -193,6 +211,8 @@ const char* node_type_to_string(NodeType type) {
         case NODE_ASSIGNMENT:     return "ASSIGNMENT";
         case NODE_PRINT:          return "PRINT";
         case NODE_WHILE:          return "WHILE";
+        case NODE_FOR:            return "FOR";
+        case NODE_DO_WHILE:       return "DO_WHILE";
         case NODE_IF:             return "IF";
         case NODE_CONDITION:      return "CONDITION";
         case NODE_BINARY_OP:      return "BINARY_OP";
@@ -257,6 +277,32 @@ void print_ast(ASTNode* node, int indent) {
             for (int i = 0; i < indent + 1; i++) printf("  ");
             printf("BODY:\n");
             print_ast(node->data.while_loop.body, indent + 2);
+            break;
+
+        case NODE_FOR:
+            printf("FOR (line %d)\n", node->line_number);
+            for (int i = 0; i < indent + 1; i++) printf("  ");
+            printf("INIT:\n");
+            print_ast(node->data.for_loop.init, indent + 2);
+            for (int i = 0; i < indent + 1; i++) printf("  ");
+            printf("CONDITION:\n");
+            print_ast(node->data.for_loop.condition, indent + 2);
+            for (int i = 0; i < indent + 1; i++) printf("  ");
+            printf("UPDATE:\n");
+            print_ast(node->data.for_loop.update, indent + 2);
+            for (int i = 0; i < indent + 1; i++) printf("  ");
+            printf("BODY:\n");
+            print_ast(node->data.for_loop.body, indent + 2);
+            break;
+
+        case NODE_DO_WHILE:
+            printf("DO-WHILE (line %d)\n", node->line_number);
+            for (int i = 0; i < indent + 1; i++) printf("  ");
+            printf("BODY:\n");
+            print_ast(node->data.do_while_loop.body, indent + 2);
+            for (int i = 0; i < indent + 1; i++) printf("  ");
+            printf("CONDITION:\n");
+            print_ast(node->data.do_while_loop.condition, indent + 2);
             break;
 
         case NODE_IF:
@@ -405,6 +451,18 @@ void free_ast(ASTNode* node) {
             if (node->data.if_stmt.else_branch) {
                 free_ast(node->data.if_stmt.else_branch);
             }
+
+        case NODE_FOR:
+            free_ast(node->data.for_loop.init);
+            free_ast(node->data.for_loop.condition);
+            free_ast(node->data.for_loop.update);
+            free_ast(node->data.for_loop.body);
+            break;
+
+        case NODE_DO_WHILE:
+            free_ast(node->data.do_while_loop.condition);
+            free_ast(node->data.do_while_loop.body);
+            break;
             break;
 
         case NODE_CONDITION:

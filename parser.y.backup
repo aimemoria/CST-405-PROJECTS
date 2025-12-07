@@ -195,7 +195,6 @@ statement:
     | if_stmt
     {
         $$ = $1;
-    }
     | for_stmt
     {
         $$ = $1;

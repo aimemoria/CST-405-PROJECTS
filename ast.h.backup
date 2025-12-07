@@ -77,12 +77,16 @@ typedef struct ASTNode {
             struct ASTNode* condition;
             struct ASTNode* body;
         } while_loop;
+
         /* For if statements (NEW FEATURE) */
         struct {
             struct ASTNode* condition;
             struct ASTNode* then_branch;
             struct ASTNode* else_branch;  /* NULL if no else */
         } if_stmt;
+
+        /* For statement lists */
+        struct {
 
         /* For loops (NEW FEATURE) */
         struct {
@@ -97,9 +101,6 @@ typedef struct ASTNode {
             struct ASTNode* condition;
             struct ASTNode* body;
         } do_while_loop;
-
-        /* For statement lists */
-        struct {
             struct ASTNode* statement;
             struct ASTNode* next;
         } stmt_list;
