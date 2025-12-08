@@ -491,11 +491,11 @@ arg_list_non_empty:
 
 /* Called when a syntax error is detected */
 void yyerror(const char* s) {
-    fprintf(stderr, "\n╔═══════════════════════════════════════════════════════════╗\n");
-    fprintf(stderr, "║ SYNTAX ERROR                                              ║\n");
-    fprintf(stderr, "╠═══════════════════════════════════════════════════════════╣\n");
-    fprintf(stderr, "║ Location: Line %d, Column %d                              ║\n", line_num, col_num);
-    fprintf(stderr, "║ Message:  %s                                              ║\n", s);
-    fprintf(stderr, "╚═══════════════════════════════════════════════════════════╝\n\n");
+    fprintf(stderr, "\n=============================================================\n");
+    fprintf(stderr, "|| SYNTAX ERROR                                           ||\n");
+    fprintf(stderr, "=============================================================\n");
+    fprintf(stderr, "|| Location: Line %d, Column %d                           ||\n", line_num, col_num);
+    fprintf(stderr, "|| Message:  %s                                           ||\n", s);
+    fprintf(stderr, "=============================================================\n\n");
     syntax_errors++;
 }

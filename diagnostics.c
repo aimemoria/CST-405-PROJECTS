@@ -206,19 +206,19 @@ void diag_security_warning(int line, int col, const char* format, ...) {
 /* Print diagnostic summary */
 void print_diagnostic_summary(void) {
     printf("\n");
-    printf("╔════════════════════════════════════════════════════╗\n");
-    printf("║           COMPILATION DIAGNOSTICS SUMMARY          ║\n");
-    printf("╠════════════════════════════════════════════════════╣\n");
-    printf("║ Notes:          %-4d                              ║\n", diag_stats.note_count);
-    printf("║ Warnings:       %-4d                              ║\n", diag_stats.warning_count);
-    printf("║ Errors:         %-4d                              ║\n", diag_stats.error_count);
-    printf("║ Fatal Errors:   %-4d                              ║\n", diag_stats.fatal_count);
-    printf("╚════════════════════════════════════════════════════╝\n");
+    printf("======================================================\n");
+    printf("||        COMPILATION DIAGNOSTICS SUMMARY         ||\n");
+    printf("======================================================\n");
+    printf("|| Notes:          %-4d                           ||\n", diag_stats.note_count);
+    printf("|| Warnings:       %-4d                           ||\n", diag_stats.warning_count);
+    printf("|| Errors:         %-4d                           ||\n", diag_stats.error_count);
+    printf("|| Fatal Errors:   %-4d                           ||\n", diag_stats.fatal_count);
+    printf("======================================================\n");
 
     if (diag_stats.error_count == 0 && diag_stats.fatal_count == 0) {
-        printf("\n✓ No errors detected - compilation successful!\n");
+        printf("\n[OK] No errors detected - compilation successful!\n");
     } else {
-        printf("\n✗ Compilation failed with %d error(s)\n",
+        printf("\n[FAILED] Compilation failed with %d error(s)\n",
                diag_stats.error_count + diag_stats.fatal_count);
     }
 }

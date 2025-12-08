@@ -232,6 +232,52 @@ void check_infinite_loops(ASTNode* node, SecurityCheckResults* results) {
     }
 }
 
+/* Check for uninitialized variable use */
+void check_uninitialized_use(ASTNode* node, SymbolTable* symtab, SecurityCheckResults* results) {
+    if (!node) return;
+
+    /* This is a simplified check - a full implementation would require data flow analysis */
+    /* For now, we just recursively traverse the tree */
+
+    switch (node->type) {
+        case NODE_PROGRAM:
+            check_uninitialized_use(node->data.program.statements, symtab, results);
+            break;
+        case NODE_STATEMENT_LIST:
+            check_uninitialized_use(node->data.stmt_list.statement, symtab, results);
+            check_uninitialized_use(node->data.stmt_list.next, symtab, results);
+            break;
+        case NODE_BINARY_OP:
+        case NODE_CONDITION:
+            check_uninitialized_use(node->data.binary_op.left, symtab, results);
+            check_uninitialized_use(node->data.binary_op.right, symtab, results);
+            break;
+        case NODE_ASSIGNMENT:
+            check_uninitialized_use(node->data.assignment.expr, symtab, results);
+            break;
+        case NODE_PRINT:
+            check_uninitialized_use(node->data.print.expr, symtab, results);
+            break;
+        case NODE_WHILE:
+            check_uninitialized_use(node->data.while_loop.condition, symtab, results);
+            check_uninitialized_use(node->data.while_loop.body, symtab, results);
+            break;
+        case NODE_IF:
+            check_uninitialized_use(node->data.if_stmt.condition, symtab, results);
+            check_uninitialized_use(node->data.if_stmt.then_branch, symtab, results);
+            check_uninitialized_use(node->data.if_stmt.else_branch, symtab, results);
+            break;
+        case NODE_FOR:
+            check_uninitialized_use(node->data.for_loop.init, symtab, results);
+            check_uninitialized_use(node->data.for_loop.condition, symtab, results);
+            check_uninitialized_use(node->data.for_loop.update, symtab, results);
+            check_uninitialized_use(node->data.for_loop.body, symtab, results);
+            break;
+        default:
+            break;
+    }
+}
+
 /* Main security analysis function */
 SecurityCheckResults* analyze_security(ASTNode* root, SymbolTable* symtab) {
     SecurityCheckResults* results = (SecurityCheckResults*)safe_calloc(1,
@@ -261,22 +307,22 @@ SecurityCheckResults* analyze_security(ASTNode* root, SymbolTable* symtab) {
 
 /* Print security analysis report */
 void print_security_report(SecurityCheckResults* results) {
-    printf("\n╔════════════════════════════════════════════════════╗\n");
-    printf("║           SECURITY ANALYSIS REPORT                ║\n");
-    printf("╠════════════════════════════════════════════════════╣\n");
-    printf("║ Buffer Overflow Risks:      %-4d                  ║\n", results->buffer_overflow_risks);
-    printf("║ Integer Overflow Risks:     %-4d                  ║\n", results->integer_overflow_risks);
-    printf("║ Division by Zero Risks:     %-4d                  ║\n", results->division_by_zero_risks);
-    printf("║ Unsafe Array Accesses:      %-4d                  ║\n", results->array_access_risks);
-    printf("║ Infinite Loop Risks:        %-4d                  ║\n", results->infinite_loop_risks);
-    printf("╠════════════════════════════════════════════════════╣\n");
-    printf("║ Total Security Issues:      %-4d                  ║\n", results->total_security_issues);
-    printf("╚════════════════════════════════════════════════════╝\n");
+    printf("\n======================================================\n");
+    printf("||          SECURITY ANALYSIS REPORT               ||\n");
+    printf("======================================================\n");
+    printf("|| Buffer Overflow Risks:      %-4d               ||\n", results->buffer_overflow_risks);
+    printf("|| Integer Overflow Risks:     %-4d               ||\n", results->integer_overflow_risks);
+    printf("|| Division by Zero Risks:     %-4d               ||\n", results->division_by_zero_risks);
+    printf("|| Unsafe Array Accesses:      %-4d               ||\n", results->array_access_risks);
+    printf("|| Infinite Loop Risks:        %-4d               ||\n", results->infinite_loop_risks);
+    printf("======================================================\n");
+    printf("|| Total Security Issues:      %-4d               ||\n", results->total_security_issues);
+    printf("======================================================\n");
 
     if (results->total_security_issues == 0) {
-        printf("\n✓ No security issues detected!\n");
+        printf("\n[OK] No security issues detected!\n");
     } else {
-        printf("\n⚠ Security analysis found %d potential issue(s)\n",
+        printf("\n[WARNING] Security analysis found %d potential issue(s)\n",
                results->total_security_issues);
         printf("  Review warnings above for details.\n");
     }

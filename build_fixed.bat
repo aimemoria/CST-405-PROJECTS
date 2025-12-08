@@ -1,11 +1,14 @@
 @echo off
-REM Build script for CST-405 Compiler
-REM This script handles paths with spaces
+REM Build script for CST-405 Compiler - Fixed for paths with spaces
+SETLOCAL EnableDelayedExpansion
 
-SET "BISON_PATH=%~dp0bison-temp\bin"
-SET "BISON_PKGDATADIR=%~dp0bison-temp\share\bison"
-SET "M4=%~dp0bison-temp\bin\m4.exe"
-SET "PATH=%BISON_PATH%;%PATH%"
+REM Get the current directory
+SET "CURRENT_DIR=%~dp0"
+SET "BISON_BIN=%CURRENT_DIR%bison-temp\bin"
+SET "BISON_PKGDATADIR=%CURRENT_DIR%bison-temp\share\bison"
+
+REM Add bison to PATH
+SET "PATH=%BISON_BIN%;%PATH%"
 
 echo ════════════════════════════════════════════════════════
 echo Building CST-405 Compiler
@@ -13,7 +16,7 @@ echo ═════════════════════════
 
 echo.
 echo Generating parser with Bison...
-bison -d -v parser.y
+"%BISON_BIN%\bison.exe" -d -v parser.y
 if errorlevel 1 (
     echo ERROR: Bison failed
     exit /b 1
@@ -54,3 +57,4 @@ echo.
 echo ════════════════════════════════════════════════════════
 echo ✓ Compiler built successfully: compiler.exe
 echo ════════════════════════════════════════════════════════
+ENDLOCAL
